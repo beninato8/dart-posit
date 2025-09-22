@@ -1,15 +1,14 @@
 name: posit
-description: A starting point for Dart libraries or applications.
-version: 1.0.0
-# repository: https://github.com/my_org/my_repo
+description: A Dart implementation of posit (unum) numbers.
+version: 0.0.0
+repository: https://github.com/beninato8/posit-dart
 
 environment:
   sdk: ^3.8.1
 
-# Add regular dependencies here.
 dependencies:
-  # path: ^1.8.0
 
 dev_dependencies:
   lints: ^5.0.0
   test: ^1.24.0
+  coverage: ^1.6.0
