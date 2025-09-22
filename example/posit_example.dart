@@ -1,4 +1,4 @@
-import 'package:dart_posit/dart_posit.dart';
+import 'package:posit/posit.dart';
 
 void main() {
   var awesome = Awesome();
