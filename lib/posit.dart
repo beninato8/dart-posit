@@ -1,8 +1,7 @@
-/// Support for doing something awesome.
-///
-/// More dartdocs go here.
+/// A Dart implementation of Posit (unum) numbers.
 library;
 
+export 'src/arithmetic.dart';
+export 'src/encoding.dart';
 export 'src/posit_base.dart';
-
-// TODO: Export any libraries intended for clients of this package.
+export 'src/utils.dart';
