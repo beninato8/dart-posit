@@ -173,10 +173,10 @@ class Posit implements Comparable<Posit> {
   bool get isZero => _bits == 0;
 
   /// Checks if this Posit is negative.
-  bool get isNegative => signBit == 1;
+  bool get isNegative => signBit == 1 && !isNaR;
 
   /// Checks if this Posit is positive.
-  bool get isPositive => signBit == 0 && !isZero && !isNaR;
+  bool get isPositive => signBit == 0 && !isZero;
 
   /// Checks if this Posit is finite.
   bool get isFinite => !isNaR;
@@ -229,7 +229,7 @@ class Posit implements Comparable<Posit> {
     if (other is Posit) {
       return compareTo(other) < 0;
     } else if (other is num) {
-      return toDouble() < other.toDouble();
+      return compareTo(Posit.fromNum(other, nbits: _nbits, es: _es)) < 0;
     } else {
       return false;
     }
@@ -240,7 +240,7 @@ class Posit implements Comparable<Posit> {
     if (other is Posit) {
       return compareTo(other) <= 0;
     } else if (other is num) {
-      return toDouble() <= other.toDouble();
+      return compareTo(Posit.fromNum(other, nbits: _nbits, es: _es)) <= 0;
     } else {
       return false;
     }
@@ -251,7 +251,7 @@ class Posit implements Comparable<Posit> {
     if (other is Posit) {
       return compareTo(other) > 0;
     } else if (other is num) {
-      return toDouble() > other.toDouble();
+      return compareTo(Posit.fromNum(other, nbits: _nbits, es: _es)) > 0;
     } else {
       return false;
     }
@@ -262,7 +262,7 @@ class Posit implements Comparable<Posit> {
     if (other is Posit) {
       return compareTo(other) >= 0;
     } else if (other is num) {
-      return toDouble() >= other.toDouble();
+      return compareTo(Posit.fromNum(other, nbits: _nbits, es: _es)) >= 0;
     } else {
       return false;
     }
@@ -276,10 +276,9 @@ class Posit implements Comparable<Posit> {
   /// Negative one, zero or positive one depending on the sign and
   /// numerical value of this number.
   Posit get sign {
-    final value = toDouble();
-    if (value.isNaN) return Posit.fromNum(double.nan, nbits: _nbits, es: _es);
-    if (value == 0.0) return Posit.fromNum(0.0, nbits: _nbits, es: _es);
-    return Posit.fromNum(value < 0 ? -1.0 : 1.0, nbits: _nbits, es: _es);
+    if (isNaR) return Posit.fromNum(double.nan, nbits: _nbits, es: _es);
+    if (isZero) return Posit.fromNum(0.0, nbits: _nbits, es: _es);
+    return Posit.fromNum(isNegative ? -1.0 : 1.0, nbits: _nbits, es: _es);
   }
 
   /// The integer closest to this number.
@@ -361,19 +360,51 @@ class Posit implements Comparable<Posit> {
 
     if (isZero && other.isZero) return 0;
 
-    // Compare signs first
     if (signBit != other.signBit) {
       return signBit == 0 ? 1 : -1; // positive > negative
     }
 
-    // Both have same sign, compare magnitudes
     if (signBit == 0) {
-      // Both positive: compare bit patterns directly
-      return _bits.compareTo(other._bits);
+      // Both positive
+      return _compareMagnitude(other);
     } else {
-      // Both negative: reverse comparison (larger magnitude = smaller value)
-      return other._bits.compareTo(_bits);
+      // Both negative: compare magnitude components and reverse result
+      // For negative numbers: larger magnitude = smaller value
+      return -_compareMagnitude(other);
     }
+  }
+
+  /// Compares the magnitude (absolute value) of this Posit with another.
+  /// Returns positive if this > other, negative if this < other, 0 if equal.
+  int _compareMagnitude(Posit other) {
+    final thisPos = signBit == 0
+        ? this
+        : Posit.fromBits(PositEncoding.negateIfNegative(_bits, _nbits), nbits: _nbits, es: _es);
+    final otherPos = other.signBit == 0
+        ? other
+        : Posit.fromBits(PositEncoding.negateIfNegative(other._bits, other._nbits), nbits: other._nbits, es: other._es);
+
+    // Compare regime (k value)
+    final thisK = thisPos.k;
+    final otherK = otherPos.k;
+
+    if (thisK != otherK) {
+      return thisK.compareTo(otherK);
+    }
+
+    // Same regime, compare exponent
+    final thisExp = thisPos.exponent;
+    final otherExp = otherPos.exponent;
+
+    if (thisExp != otherExp) {
+      return thisExp.compareTo(otherExp);
+    }
+
+    // Same regime and exponent, compare fraction
+    final thisFrac = thisPos.fraction;
+    final otherFrac = otherPos.fraction;
+
+    return thisFrac.compareTo(otherFrac);
   }
 
   @override
