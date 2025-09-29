@@ -1,14 +1,9 @@
 import 'package:posit/posit.dart';
 import 'package:test/test.dart';
 
-typedef PositTestItem = ({int bits, int sign, int k, int regime, int exponent, double fraction, double value});
+import 'utils.dart';
 
-// https://stackoverflow.com/a/78997923
-extension Binary on int {
-  int get b {
-    return int.parse(toRadixString(10), radix: 2);
-  }
-}
+typedef PositTestItem = ({int bits, int sign, int k, int regime, int exponent, double fraction, double value});
 
 void main() {
   group('Posit Bit Values Tests', () {
