@@ -165,8 +165,85 @@ class PositEncoding {
     if (value == 0) {
       return _encodeZero(nbits);
     }
-    // TODO: Implement encodeFromDouble to convert a double to a Posit representation
-    return 0;
+
+    final int maxPos = (1 << (nbits - 1)) - 1;
+
+    bool sign = value < 0;
+    double absValue = value.abs();
+
+    // useed = 2^(2^es)
+    int useed = math.pow(2, math.pow(2, es)).toInt();
+
+    // Step 1: Find regime k
+    int k = (math.log(absValue) / math.log(useed)).floor();
+
+    // Normalize value by regime scaling
+    double scaled = absValue / math.pow(useed, k);
+
+    // Step 2: Extract exponent (up to es bits)
+    int exp = 0;
+    if (es > 0) {
+      exp = (math.log(scaled) / math.ln2).floor();
+      if (exp < 0) exp = 0;
+      if (exp >= (1 << es)) exp = (1 << es) - 1;
+      scaled = scaled / math.pow(2, exp);
+    }
+
+    // Step 3: Remaining bits → fraction
+    int remainingBits = nbits - 1; // exclude sign
+    // Regime field length
+    int regimeLen = (k >= 0) ? (k + 2) : (-k + 1);
+    remainingBits -= regimeLen;
+    remainingBits -= es;
+    if (remainingBits < 0) remainingBits = 0;
+
+    int fraction = (scaled - 1.0 > 0) ? ((scaled - 1.0) * (1 << remainingBits)).toInt() : 0;
+
+    // Step 4: Construct regime field
+    int regimeField;
+    int regimeBits;
+    if (k >= 0) {
+      regimeBits = k + 2;
+      regimeField = ((1 << (regimeBits - 1)) - 1) << 1; // k+1 ones then a zero
+    } else {
+      regimeBits = -k + 1;
+      regimeField = 1; // leading zeros with terminating one
+    }
+
+    // Step 5: Assemble posit bits
+    int posit = 0;
+    int shift = nbits - 1; // position before sign
+
+    // regime
+    if (shift >= regimeBits) {
+      posit |= (regimeField & ((1 << regimeBits) - 1)) << (shift - regimeBits);
+      shift -= regimeBits;
+    }
+
+    // exponent
+    if (es > 0 && shift >= es) {
+      posit |= (exp & ((1 << es) - 1)) << (shift - es);
+      shift -= es;
+    }
+
+    // fraction
+    if (remainingBits > 0) {
+      posit |= (fraction & ((1 << remainingBits) - 1));
+    }
+
+    // Saturate to fit in nbits
+    int mask = (1 << nbits) - 1;
+    posit &= mask;
+
+    // Clamp to representable range (before applying sign)
+    posit = posit.clamp(0, maxPos);
+
+    // Step 6: Apply sign with two's complement
+    if (sign) {
+      posit = negate(posit, nbits);
+    }
+
+    return posit;
   }
 
   /// Encodes NaR representation.
