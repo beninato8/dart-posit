@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'encoding.dart';
 import 'posit_base.dart';
 
 /// Utility functions for Posit numbers.
@@ -12,10 +13,9 @@ class PositUtils {
   /// [a] - the Posit number
   static Posit abs(Posit a) {
     if (a.isNegative) {
-      // Flip the sign bit by XOR with the sign bit mask
-      final signBitMask = 1 << (a.nbits - 1);
-      final newBits = a.bits ^ signBitMask;
-      return Posit.fromBits(newBits, nbits: a.nbits, es: a.es);
+      // Convert from two's complement to get positive representation
+      final positiveBits = PositEncoding.negateIfNegative(a.bits, a.nbits);
+      return Posit.fromBits(positiveBits, nbits: a.nbits, es: a.es);
     }
     return a;
   }
